@@ -67,6 +67,8 @@ tr:hover td { background: var(--color-background-secondary); }
 .modal-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--color-border-tertiary); }
 .modal-section h4 { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0; }
 #modal-description { font-size: 14px; line-height: 1.55; color: var(--color-text-primary); }
+.scientific-link { color: #0F6E56; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; }
+.scientific-link:hover { color: #085041; }
 .detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
 .field span { display: block; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
 .field-value { min-height: 28px; border-bottom: 1px solid var(--color-border-secondary); }
@@ -205,6 +207,44 @@ let sortCol = "name", sortDir = 1, activeFilters = new Set(), activeSource = nul
 
 const catLabels = {"Frutal":"🍎 Frutal","Alto":"🌳 Alto","Bajo":"🌿 Bajo","Apto para humedad":"💧 Humedad","Resistente al viento":"💨 Viento","Protector de nacientes":"🌊 Nacientes","Ornamental":"🌸 Ornamental","Madera preciosa":"🪵 Madera"};
 const sourceLabels = {f:"📍 Upala", s:"⚡ ICE"};
+const scientificNames = [
+  "Couroupita guianensis",
+  "Citrus aurantium",
+  "Eugenia stipitata",
+  "Nephelium lappaceum",
+  "Chrysophyllum cainito",
+  "Syzygium jambos/malaccense",
+  "Theobroma cacao",
+  "Citrus limetta",
+  "Inga edulis",
+  "Citrus reticulata",
+  "Dipteryx panamensis",
+  "Annona glabra",
+  "Swietenia spp.",
+  "Cassia grandis",
+  "Psidium friedrichsthalianum",
+  "Artocarpus heterophyllus",
+  "Vochysia guatemalensis",
+  "Samanea saman",
+  "Inga spp.",
+  "Inga marginata",
+  "Hymenaea courbaril",
+  "Psidium guajava",
+  "Guaiacum sanctum",
+  "Parmentiera valeriie",
+  "Cojoba arborea",
+  "Delonix regia",
+  "Melicoccus bijugatus",
+  "Zyzygium malaccense",
+  "Brosimum sp.",
+  "Lagerstroemia speciosa",
+  "Coccoloba caracasana",
+  "Astronium graveolens",
+  "Ruprechtria costata",
+  "Caesalpinia Eriostachys",
+  "Zygia longifolia",
+  "Tecoma stans"
+];
 const treeDescriptions = {
   "Naranja": "Cítrico tropical ampliamente cultivado. Árbol de copa redondeada, produce frutos dulces ricos en vitamina C. Se adapta a climas cálidos y suelos bien drenados.",
   "Bala de cañón": "Árbol ornamental de gran porte (Couroupita guianensis). Sus flores rosadas y frutos esféricos lignificados son llamativos. Originario de Sudamérica, crece en zonas cálidas y húmedas.",
@@ -323,13 +363,34 @@ function getSorted(rows) {
   });
 }
 
+function escapeHtml(text) {
+  return text.replace(/[&<>"']/g, char => ({
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    "\"": "&quot;",
+    "'": "&#039;"
+  }[char]));
+}
+
+function linkScientificNames(description) {
+  let html = escapeHtml(description);
+  scientificNames.forEach(name => {
+    const safeName = escapeHtml(name);
+    const url = `https://www.google.com/search?q=${encodeURIComponent(name)}`;
+    const link = `<a class="scientific-link" href="${url}" target="_blank" rel="noopener noreferrer">${safeName}</a>`;
+    html = html.split(safeName).join(link);
+  });
+  return html;
+}
+
 function openTreeDetail(tree) {
   const modal = document.getElementById("tree-modal");
   const source = document.getElementById("modal-source");
   const cats = document.getElementById("modal-cats");
   document.getElementById("modal-title").textContent = tree.name;
   document.getElementById("modal-qty").textContent = `${tree.qty} unidad${tree.qty === 1 ? "" : "es"}`;
-  document.getElementById("modal-description").textContent = treeDescriptions[tree.name] || "Descripción no disponible.";
+  document.getElementById("modal-description").innerHTML = linkScientificNames(treeDescriptions[tree.name] || "Descripción no disponible.");
   source.className = `source-badge ${tree.src === "f" ? "src-fiorela" : "src-species"}`;
   source.textContent = tree.src === "f" ? "Upala" : "ICE";
   cats.innerHTML = "";
