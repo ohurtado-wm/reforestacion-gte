@@ -38,6 +38,7 @@ thead th.sorted .sort-icon { opacity: 1; color: #1D9E75; }
 td { padding: 8px 10px; border: 1px solid var(--color-border-tertiary); color: var(--color-text-primary); vertical-align: middle; }
 tr:last-child td { border-bottom: none; }
 tr:hover td { background: var(--color-background-secondary); }
+.tree-row { cursor: zoom-in; }
 .name-cell { font-weight: 500; font-size: 13px; }
 .sci-cell { font-size: 11px; color: var(--color-text-secondary); font-style: italic; }
 .qty-cell { font-weight: 500; color: #0F6E56; text-align: center; }
@@ -50,6 +51,31 @@ tr:hover td { background: var(--color-background-secondary); }
 .src-species { background: #E6F1FB; color: #0C447C; }
 @media (prefers-color-scheme: dark) { .src-fiorela { background: #412402; color: #FAC775; } .src-species { background: #042C53; color: #85B7EB; } }
 .total-row td { font-weight: 500; font-size: 12px; background: var(--color-background-secondary); color: var(--color-text-secondary); }
+.detail-modal[hidden] { display: none; }
+.detail-modal { position: fixed; inset: 0; z-index: 1000; display: grid; place-items: center; padding: 20px; }
+.modal-backdrop { position: absolute; inset: 0; background: rgba(9, 34, 28, 0.52); }
+.modal-card { position: relative; width: min(760px, 100%); max-height: min(90vh, 820px); overflow: auto; border-radius: 8px; border: 1px solid var(--color-border-secondary); background: var(--color-background-primary); box-shadow: 0 24px 70px rgba(8, 38, 31, 0.28); padding: 20px; }
+.modal-close { position: absolute; top: 10px; right: 10px; width: 34px; height: 34px; border: 1px solid var(--color-border-secondary); border-radius: 50%; background: #fff; color: var(--color-text-secondary); font-size: 22px; line-height: 1; cursor: pointer; }
+.modal-close:hover { color: var(--color-text-primary); background: var(--color-background-secondary); }
+.modal-top { display: grid; grid-template-columns: 180px 1fr; gap: 16px; align-items: start; padding-right: 28px; }
+.photo-slot { display: grid; place-items: center; aspect-ratio: 4 / 3; border: 1px dashed #9db8ae; border-radius: 8px; background: #f6faf8; color: var(--color-text-secondary); font-size: 12px; text-align: center; }
+.modal-meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; margin-bottom: 8px; }
+.modal-qty { font-size: 12px; color: var(--color-text-secondary); }
+#modal-title { font-size: 24px; line-height: 1.2; color: #123c32; margin-bottom: 10px; }
+.modal-cats { display: flex; gap: 6px; flex-wrap: wrap; }
+.mini-chip { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; background: #edf6f2; color: #0f5847; font-size: 11px; }
+.modal-section { margin-top: 18px; padding-top: 16px; border-top: 1px solid var(--color-border-tertiary); }
+.modal-section h4 { font-size: 13px; color: var(--color-text-secondary); margin-bottom: 8px; text-transform: uppercase; letter-spacing: 0; }
+#modal-description { font-size: 14px; line-height: 1.55; color: var(--color-text-primary); }
+.detail-grid { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px 16px; }
+.field span { display: block; font-size: 12px; color: var(--color-text-secondary); margin-bottom: 6px; }
+.field-value { min-height: 28px; border-bottom: 1px solid var(--color-border-secondary); }
+@media (max-width: 640px) {
+  body { padding: 16px; }
+  .modal-card { padding: 16px; }
+  .modal-top, .detail-grid { grid-template-columns: 1fr; }
+  #modal-title { font-size: 21px; }
+}
 </style>
 
 <div class="toolbar">
@@ -86,6 +112,39 @@ tr:hover td { background: var(--color-background-secondary); }
     </thead>
     <tbody id="tbody"></tbody>
   </table>
+</div>
+
+<div class="detail-modal" id="tree-modal" hidden>
+  <div class="modal-backdrop" data-close-modal></div>
+  <section class="modal-card" role="dialog" aria-modal="true" aria-labelledby="modal-title">
+    <button type="button" class="modal-close" id="modal-close" aria-label="Cerrar"><span aria-hidden="true">&times;</span></button>
+    <div class="modal-top">
+      <div class="photo-slot" aria-label="Espacio para incluir foto">
+        <span>Espacio para foto</span>
+      </div>
+      <div>
+        <div class="modal-meta">
+          <span class="source-badge" id="modal-source"></span>
+          <span class="modal-qty" id="modal-qty"></span>
+        </div>
+        <h3 id="modal-title"></h3>
+        <div class="modal-cats" id="modal-cats"></div>
+      </div>
+    </div>
+    <div class="modal-section">
+      <h4>Descripción</h4>
+      <p id="modal-description"></p>
+    </div>
+    <div class="modal-section">
+      <h4>Datos de siembra</h4>
+      <div class="detail-grid">
+        <div class="field"><span>Altura</span><div class="field-value"></div></div>
+        <div class="field"><span>Distancia entre siembra</span><div class="field-value"></div></div>
+        <div class="field"><span>Tipo de suelo</span><div class="field-value"></div></div>
+        <div class="field"><span>Cuidados iniciales</span><div class="field-value"></div></div>
+      </div>
+    </div>
+  </section>
 </div>
 
 <script>
@@ -146,6 +205,55 @@ let sortCol = "name", sortDir = 1, activeFilter = null, activeSource = null, sea
 
 const catLabels = {"Frutal":"🍎 Frutal","Alto":"🌳 Alto","Bajo":"🌿 Bajo","Apto para humedad":"💧 Humedad","Resistente al viento":"💨 Viento","Protector de nacientes":"🌊 Nacientes","Ornamental":"🌸 Ornamental","Madera preciosa":"🪵 Madera"};
 const sourceLabels = {f:"📍 Upala", s:"⚡ ICE"};
+const treeDescriptions = {
+  "Naranja": "Cítrico tropical ampliamente cultivado. Árbol de copa redondeada, produce frutos dulces ricos en vitamina C. Se adapta a climas cálidos y suelos bien drenados.",
+  "Bala de cañón": "Árbol ornamental de gran porte (Couroupita guianensis). Sus flores rosadas y frutos esféricos lignificados son llamativos. Originario de Sudamérica, crece en zonas cálidas y húmedas.",
+  "Naranja Agria": "Variedad de naranja (Citrus aurantium) con frutos de sabor ácido. Usada en medicina tradicional y como portainjerto. Más resistente a enfermedades que la naranja dulce.",
+  "Arazá": "Frutal amazónico (Eugenia stipitata) de rápido crecimiento. Sus frutos amarillos son muy aromáticos y ricos en vitamina C. Requiere suelos húmedos y clima tropical.",
+  "Limón sapo": "Variante de limón de corteza gruesa y rugosa. Árbol compacto, muy productivo, adaptado a climas cálidos. Su jugo es ácido y se usa en gastronomía y medicina.",
+  "Mamón chino": "También llamado Rambután (Nephelium lappaceum). Frutal tropical de frutos rojos cubiertos de espinas suaves. Requiere clima cálido y húmedo para producir.",
+  "Mamón verde": "Variedad de mamón o zapote verde. Frutal tropical de pulpa dulce y aromática, con alto contenido de azúcares. Adaptado a climas cálidos.",
+  "Caimito Morado": "Árbol frutal tropical (Chrysophyllum cainito) de frutos redondos con pulpa blanca dulce y gelatinosa. La variedad morada tiene piel oscura brillante.",
+  "Caimito Verde": "Variedad de caimito de piel verde en madurez. Árbol de gran porte, frutos dulces muy apreciados. Propio de zonas bajas tropicales.",
+  "Manzana de agua": "Frutal tropical (Syzygium jambos/malaccense) de frutos crujientes y refrescantes. Árbol de porte medio que prefiere suelos húmedos cerca de fuentes de agua.",
+  "Cacao": "Árbol tropical (Theobroma cacao) del que se obtiene el chocolate. Crece bajo sombra en climas cálidos y húmedos. Sus semillas fermentadas y tostadas producen el cacao.",
+  "Mango Rosa": "Variedad de mango de frutos rosados muy dulces y fibrosos. Árbol de gran porte, productivo, adaptado a climas cálidos con estación seca definida.",
+  "Mango criollo": "Mango nativo adaptado localmente, de frutos medianos y sabor intenso. Árbol muy resistente a condiciones adversas y de larga vida productiva.",
+  "Fruta Dorada": "Frutal tropical de frutos amarillos dulces. Árbol compacto apreciado en huertos familiares por su producción continua en climas cálidos.",
+  "Limón dulce": "Cítrico de sabor suave y poco ácido (Citrus limetta). Árbol compacto, muy productivo. Se usa en jugos y medicina natural por sus propiedades digestivas.",
+  "Malagueña": "Variedad de fruta tropical de sabor dulce. Árbol de porte bajo, adaptado a zonas cálidas, valorado en la gastronomía local.",
+  "Limón criollo": "Limón pequeño muy aromático y jugoso, adaptado al trópico. Árbol vigoroso y productivo. Fundamental en la gastronomía y medicina tradicional costarricense.",
+  "Guaba machete": "Leguminosa arbórea (Inga edulis) de vainas largas con pulpa dulce comestible. Fija nitrógeno, protege nacientes y mejora el suelo. Crece bien en zonas húmedas.",
+  "Mandarina": "Cítrico de frutos pequeños de fácil pelado (Citrus reticulata). Árbol compacto muy productivo, adaptado a climas cálidos templados. Fruto muy apreciado por niños.",
+  "Almendro Amarillo": "Dipteryx panamensis, árbol maderable de gran porte. Especie en peligro de extinción en Costa Rica. Produce madera muy dura y es alimento clave para el gran pez amarillo. Excelente para sombra y protección de cuencas.",
+  "Anona silvestre": "Annona glabra, árbol de zonas húmedas y ribereñas. Sus frutos flotantes son dispersados por agua y fauna. Tolera inundaciones temporales y es refugio de aves.",
+  "Caoba": "Swietenia spp., árbol maderable icónico de gran valor comercial. Especie protegida. Madera rojiza muy apreciada en ebanistería. Crece en bosques tropicales secos y húmedos.",
+  "Carao": "Cassia grandis, árbol ornamental de flores rosadas espectaculares. Sus vainas largas contienen una pulpa medicinal usada para la anemia. Resiste sequías y crece en zonas ribereñas.",
+  "Cas": "Psidium friedrichsthalianum, arbusto o árbol pequeño nativo de Costa Rica. Sus frutos ácidos son base del popular refresco de cas. Requiere clima cálido húmedo.",
+  "Castaña": "Artocarpus heterophyllus (Jackfruit). Árbol de gran porte con los frutos más grandes del mundo. Madera resistente y frutos nutritivos. Requiere clima tropical cálido.",
+  "Cebo": "Vochysia guatemalensis, árbol de crecimiento rápido de tierras bajas húmedas. Madera clara usada en construcción. Importante para reforestación de zonas degradadas.",
+  "Cenízaro": "Samanea saman, árbol de gran copa frondosa. Proporciona excelente sombra, mejora suelos y produce vainas con pulpa dulce comestible. Símbolo de Guanacaste.",
+  "Corteza amarilla (H. ochraceus)": "Árbol nativo de espectacular floración amarilla sin hojas. Madera muy resistente. Considerado símbolo nacional de Costa Rica. Florece en época seca.",
+  "Corteza amarillo (H. guayacan)": "Especie similar al anterior, también de flores amarillas brillantes. Madera dura y durable. Ambas especies son valiosas para reforestación ornamental y recuperación de bosque seco.",
+  "Guaba": "Inga spp., árbol leguminoso fijador de nitrógeno. Sus vainas contienen semillas envueltas en pulpa blanca dulce comestible. Esencial para sombra de café y protección de quebradas.",
+  "Guajiniquil": "Inga marginata, leguminosa arbórea similar a la guaba. Frutos comestibles, fija nitrógeno y mejora suelos. Crece rápido en zonas húmedas y ribereñas.",
+  "Guapinol": "Hymenaea courbaril, árbol de madera durísima y resina histórica (copal). De lento crecimiento pero larga vida. Sus frutos son alimento de fauna silvestre.",
+  "Guayaba": "Psidium guajava, árbol frutal muy popular en zonas tropicales. Sus frutos son ricos en vitamina C y licopeno. Muy adaptable a distintos suelos y climas.",
+  "Guayacán real": "Guaiacum sanctum, árbol de madera más densa del mundo. En peligro de extinción. Flores violetas ornamentales. De crecimiento muy lento pero alta longevidad.",
+  "Jícaro o plátano danto": "Parmentiera valeriie, árbol de frutos largos colgantes llamativos. Los frutos son comestibles y usados como alimento de fauna. Crece en zonas húmedas tropicales.",
+  "Lorito": "Cojoba arborea, árbol leguminoso de dosel alto. Fija nitrógeno y mejora la fertilidad del suelo. Especie nativa importante para restauración de bosque húmedo.",
+  "Malinche": "Delonix regia, árbol ornamental originario de Madagascar. Sus flores rojas son espectaculares. Ampliamente usado en avenidas y parques. Tolera bien la sequía.",
+  "Mamón criollo": "Melicoccus bijugatus, árbol frutal tropical de frutos pequeños con semilla grande. Pulpa gelatinosa dulce-ácida muy apreciada. Árbol longevo y resistente.",
+  "Manzana de agua (Zyzygium)": "Zyzygium malaccense, árbol frutal tropical de frutos crujientes y refrescantes. Requiere suelos húmedos. Produce abundantemente en clima cálido.",
+  "Ojoche": "Brosimum sp., árbol del dosel de bosque húmedo. Sus semillas son altamente nutritivas y se usaban como alimento de emergencia. Importante para fauna silvestre.",
+  "Orgullo de la india": "Lagerstroemia speciosa, árbol ornamental de flores rosadas-moradas vistosas. Originario de Asia tropical. Resistente al viento y usado en parques y avenidas.",
+  "Papaturro": "Coccoloba caracasana, árbol nativo de regiones tropicales. Crece en zonas ribereñas y húmedas. Sus frutos son alimento de fauna. Ayuda a proteger márgenes de ríos.",
+  "Ron ron": "Astronium graveolens, árbol maderable de madera muy valiosa y decorativa. Resistente al viento. Especie nativa de bosque seco tropical en peligro.",
+  "Rupetria": "Ruprechtria costata, árbol nativo del bosque seco tropical. Madera útil localmente. Importante para restauración de zonas degradadas de clima seco.",
+  "Sainillo-saino": "Caesalpinia Eriostachys, árbol nativo de zonas secas tropicales. Leguminosa que fija nitrógeno. Protege nacientes y mejora suelos erosionados.",
+  "Sotacaballo": "Zygia longifolia, árbol leguminoso de zonas húmedas y ribereñas. Fija nitrógeno, protege márgenes de ríos y nacientes. De rápido crecimiento.",
+  "Vainillo": "Tecoma stans, arbusto o árbol pequeño de flores amarillas tubulares muy llamativas. Muy resistente a la sequía y al viento. Ornamental y melífera."
+};
 
 function updateActiveFilterLabel() {
   const lbl = document.getElementById("active-filter-label");
@@ -214,6 +322,30 @@ function getSorted(rows) {
   });
 }
 
+function openTreeDetail(tree) {
+  const modal = document.getElementById("tree-modal");
+  const source = document.getElementById("modal-source");
+  const cats = document.getElementById("modal-cats");
+  document.getElementById("modal-title").textContent = tree.name;
+  document.getElementById("modal-qty").textContent = `${tree.qty} unidad${tree.qty === 1 ? "" : "es"}`;
+  document.getElementById("modal-description").textContent = treeDescriptions[tree.name] || "Descripción no disponible.";
+  source.className = `source-badge ${tree.src === "f" ? "src-fiorela" : "src-species"}`;
+  source.textContent = tree.src === "f" ? "Upala" : "ICE";
+  cats.innerHTML = "";
+  tree.cats.forEach(cat => {
+    const chip = document.createElement("span");
+    chip.className = "mini-chip";
+    chip.textContent = catLabels[cat];
+    cats.appendChild(chip);
+  });
+  modal.hidden = false;
+  document.getElementById("modal-close").focus();
+}
+
+function closeTreeDetail() {
+  document.getElementById("tree-modal").hidden = true;
+}
+
 function render() {
   const rows = getSorted(getFiltered());
   const tbody = document.getElementById("tbody");
@@ -233,7 +365,7 @@ function render() {
     const cats = CATS.map(c =>
       `<td style="text-align:center">${r.cats.includes(c) ? '<span class="check"><i class="ti ti-check" aria-hidden="true"></i></span>' : ''}</td>`
     ).join("");
-    return `<tr>
+    return `<tr class="tree-row" data-tree-index="${data.indexOf(r)}" title="Doble clic para ver detalle">
       <td class="name-cell">${r.name}${badge}</td>
       <td class="qty-cell">${r.qty}</td>
       ${cats}
@@ -242,6 +374,10 @@ function render() {
     <td>Total</td><td style="text-align:center;font-weight:500;color:#0F6E56">${totalQty}</td>
     ${CATS.map(c => `<td style="text-align:center;font-size:11px;color:var(--color-text-secondary)">${rows.filter(r=>r.cats.includes(c)).reduce((s,r)=>s+r.qty,0)}</td>`).join("")}
   </tr>`;
+
+  tbody.querySelectorAll(".tree-row").forEach(row => {
+    row.addEventListener("dblclick", () => openTreeDetail(data[Number(row.dataset.treeIndex)]));
+  });
 
   document.querySelectorAll("thead th").forEach(th => th.classList.remove("sorted"));
   const activeId = sortCol === "name" ? "th-name" : sortCol === "qty" ? "th-qty" : COL_IDS[sortCol];
@@ -264,6 +400,12 @@ function sortBy(col) {
 document.getElementById("search").addEventListener("input", e => {
   searchVal = e.target.value.toLowerCase().trim();
   render();
+});
+
+document.getElementById("modal-close").addEventListener("click", closeTreeDetail);
+document.querySelector("[data-close-modal]").addEventListener("click", closeTreeDetail);
+document.addEventListener("keydown", e => {
+  if (e.key === "Escape" && !document.getElementById("tree-modal").hidden) closeTreeDetail();
 });
 
 buildChips();
