@@ -1,0 +1,271 @@
+
+<h2 class="sr-only">Catálogo interactivo de árboles con filtros por categoría, búsqueda y ordenamiento</h2>
+
+<style>
+:root {
+  --font-sans: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+  --color-background-primary: #ffffff;
+  --color-background-secondary: #f3f8f5;
+  --color-text-primary: #10231f;
+  --color-text-secondary: #52645f;
+  --color-border-secondary: #cdded7;
+  --color-border-tertiary: #dfeae6;
+}
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: var(--font-sans); color: var(--color-text-primary); background: #f7faf8; padding: 24px; }
+h2.sr-only { max-width: 1180px; margin: 0 auto 16px; font-size: 24px; line-height: 1.25; font-weight: 700; color: #123c32; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; max-width: 1180px; margin: 0 auto; padding: 0 0 0.75rem; }
+.search-wrap { position: relative; flex: 1; min-width: 180px; }
+.search-wrap i { position: absolute; left: 10px; top: 50%; transform: translateY(-50%); font-size: 16px; color: var(--color-text-secondary); pointer-events: none; }
+#search { width: 100%; min-height: 38px; padding: 8px 12px 8px 34px; font-size: 13px; border: 1px solid var(--color-border-secondary); border-radius: 6px; background: #fff; color: var(--color-text-primary); }
+#search:focus { outline: 2px solid #bfe7da; border-color: #1D9E75; }
+.cat-filters { display: flex; flex-wrap: wrap; gap: 6px; max-width: 1180px; margin: 0 auto; }
+.chip { display: inline-flex; align-items: center; gap: 5px; padding: 4px 10px; border-radius: 20px; font-size: 12px; cursor: pointer; border: 0.5px solid var(--color-border-secondary); background: var(--color-background-primary); color: var(--color-text-secondary); transition: background 0.15s, color 0.15s; user-select: none; }
+.chip:hover { background: var(--color-background-secondary); }
+.chip.active { border-color: #1D9E75; background: #E1F5EE; color: #085041; }
+@media (prefers-color-scheme: dark) { .chip.active { background: #04342C; color: #9FE1CB; border-color: #0F6E56; } }
+.stats { display: flex; gap: 16px; max-width: 1180px; margin: 0 auto; font-size: 12px; color: var(--color-text-secondary); align-items: center; padding: 0.25rem 0 0.75rem; flex-wrap: wrap; }
+.stat-val { font-weight: 500; color: var(--color-text-primary); }
+.tbl-wrap { width: 100%; max-width: 1180px; margin: 0 auto; overflow-x: auto; border: 1px solid var(--color-border-secondary); border-radius: 8px; background: var(--color-background-primary); box-shadow: 0 8px 24px rgba(20, 54, 45, 0.08); }
+table { width: 100%; min-width: 980px; margin: 0 auto; border-collapse: collapse; font-size: 12.5px; table-layout: fixed; }
+thead th { background: var(--color-background-secondary); font-weight: 600; font-size: 12px; color: var(--color-text-secondary); padding: 9px 10px; border: 1px solid var(--color-border-tertiary); border-top: 0; cursor: pointer; user-select: none; white-space: nowrap; text-align: left; }
+thead th:first-child, td:first-child { border-left: 0; }
+thead th:last-child, td:last-child { border-right: 0; }
+thead th:hover { color: var(--color-text-primary); }
+thead th.sorted { color: var(--color-text-primary); }
+thead th .sort-icon { font-size: 11px; margin-left: 3px; opacity: 0.5; }
+thead th.sorted .sort-icon { opacity: 1; color: #1D9E75; }
+td { padding: 8px 10px; border: 1px solid var(--color-border-tertiary); color: var(--color-text-primary); vertical-align: middle; }
+tr:last-child td { border-bottom: none; }
+tr:hover td { background: var(--color-background-secondary); }
+.name-cell { font-weight: 500; font-size: 13px; }
+.sci-cell { font-size: 11px; color: var(--color-text-secondary); font-style: italic; }
+.qty-cell { font-weight: 500; color: #0F6E56; text-align: center; }
+@media (prefers-color-scheme: dark) { .qty-cell { color: #5DCAA5; } }
+.check { display: inline-flex; align-items: center; justify-content: center; width: 18px; height: 18px; border-radius: 50%; background: #E1F5EE; color: #0F6E56; font-size: 11px; }
+@media (prefers-color-scheme: dark) { .check { background: #04342C; color: #9FE1CB; } }
+.empty { text-align: center; padding: 2rem; color: var(--color-text-secondary); font-size: 13px; }
+.source-badge { display: inline-block; font-size: 10px; padding: 2px 6px; border-radius: 10px; margin-left: 4px; font-weight: 400; }
+.src-fiorela { background: #FAEEDA; color: #633806; }
+.src-species { background: #E6F1FB; color: #0C447C; }
+@media (prefers-color-scheme: dark) { .src-fiorela { background: #412402; color: #FAC775; } .src-species { background: #042C53; color: #85B7EB; } }
+.total-row td { font-weight: 500; font-size: 12px; background: var(--color-background-secondary); color: var(--color-text-secondary); }
+</style>
+
+<div class="toolbar">
+  <div class="search-wrap">
+    <i class="ti ti-search" aria-hidden="true"></i>
+    <input type="text" id="search" placeholder="Buscar árbol..." />
+  </div>
+</div>
+
+<div class="cat-filters" id="cat-filters" style="padding-bottom: 10px;"></div>
+
+<div class="stats">
+  <span>Mostrando <span class="stat-val" id="showing">—</span> árboles</span>
+  <span>·</span>
+  <span>Total solicitado: <span class="stat-val" id="total-qty">—</span> unidades</span>
+  <span id="active-filter-label" style="display:none">· Filtro activo: <span class="stat-val" id="filter-name"></span></span>
+</div>
+
+<div class="tbl-wrap">
+  <table>
+    <thead>
+      <tr>
+        <th style="width:30%" onclick="sortBy('name')" id="th-name">Árbol <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:8%" onclick="sortBy('qty')" id="th-qty">Cant. <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:9%" onclick="sortBy('Frutal')" id="th-Frutal" title="Frutal">Frutal <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:7%" onclick="sortBy('Alto')" id="th-Alto" title="Alto">Alto <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:7%" onclick="sortBy('Bajo')" id="th-Bajo" title="Bajo">Bajo <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:9%" onclick="sortBy('Apto para humedad')" id="th-Humedad" title="Apto para humedad">Humedad <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:9%" onclick="sortBy('Resistente al viento')" id="th-Viento" title="Resistente al viento">Viento <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:10%" onclick="sortBy('Protector de nacientes')" id="th-Nacientes" title="Protector de nacientes">Nacientes <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:9%" onclick="sortBy('Ornamental')" id="th-Ornamental">Ornamental <span class="sort-icon ti ti-arrows-sort"></span></th>
+        <th style="width:9%" onclick="sortBy('Madera preciosa')" id="th-Madera">Madera <span class="sort-icon ti ti-arrows-sort"></span></th>
+      </tr>
+    </thead>
+    <tbody id="tbody"></tbody>
+  </table>
+</div>
+
+<script>
+const CATS = ["Frutal","Alto","Bajo","Apto para humedad","Resistente al viento","Protector de nacientes","Ornamental","Madera preciosa"];
+const COL_IDS = { "Frutal":"th-Frutal","Alto":"th-Alto","Bajo":"th-Bajo","Apto para humedad":"th-Humedad","Resistente al viento":"th-Viento","Protector de nacientes":"th-Nacientes","Ornamental":"th-Ornamental","Madera preciosa":"th-Madera" };
+
+const data = [
+  {name:"Naranja",qty:3,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Bala de cañón",qty:1,src:"f",cats:["Alto","Ornamental"]},
+  {name:"Naranja Agria",qty:1,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Arazá",qty:4,src:"f",cats:["Frutal","Bajo","Apto para humedad"]},
+  {name:"Limón sapo",qty:2,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Mamón chino",qty:4,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Mamón verde",qty:1,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Caimito Morado",qty:1,src:"f",cats:["Frutal","Alto"]},
+  {name:"Caimito Verde",qty:3,src:"f",cats:["Frutal","Alto"]},
+  {name:"Manzana de agua",qty:1,src:"f",cats:["Frutal","Alto","Apto para humedad"]},
+  {name:"Cacao",qty:4,src:"f",cats:["Frutal","Bajo","Apto para humedad"]},
+  {name:"Mango Rosa",qty:3,src:"f",cats:["Frutal","Alto"]},
+  {name:"Mango criollo",qty:2,src:"f",cats:["Frutal","Alto"]},
+  {name:"Fruta Dorada",qty:4,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Limón dulce",qty:3,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Malagueña",qty:3,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Limón criollo",qty:4,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Guaba machete",qty:4,src:"f",cats:["Frutal","Alto","Protector de nacientes","Apto para humedad"]},
+  {name:"Mandarina",qty:3,src:"f",cats:["Frutal","Bajo"]},
+  {name:"Almendro Amarillo",qty:5,src:"s",cats:["Alto","Protector de nacientes","Resistente al viento"]},
+  {name:"Anona silvestre",qty:10,src:"s",cats:["Frutal","Bajo","Apto para humedad"]},
+  {name:"Caoba",qty:5,src:"s",cats:["Alto","Resistente al viento","Madera preciosa"]},
+  {name:"Carao",qty:5,src:"s",cats:["Alto","Protector de nacientes","Apto para humedad"]},
+  {name:"Cas",qty:10,src:"s",cats:["Frutal","Bajo"]},
+  {name:"Castaña",qty:2,src:"s",cats:["Frutal","Alto"]},
+  {name:"Cebo",qty:2,src:"s",cats:["Alto","Resistente al viento"]},
+  {name:"Cenízaro",qty:5,src:"s",cats:["Alto","Resistente al viento","Ornamental"]},
+  {name:"Corteza amarilla (H. ochraceus)",qty:15,src:"s",cats:["Alto","Ornamental","Resistente al viento"]},
+  {name:"Corteza amarillo (H. guayacan)",qty:15,src:"s",cats:["Alto","Ornamental","Resistente al viento"]},
+  {name:"Guaba",qty:15,src:"s",cats:["Frutal","Alto","Protector de nacientes","Apto para humedad"]},
+  {name:"Guajiniquil",qty:10,src:"s",cats:["Frutal","Alto","Protector de nacientes","Apto para humedad"]},
+  {name:"Guapinol",qty:5,src:"s",cats:["Alto","Resistente al viento","Protector de nacientes"]},
+  {name:"Guayaba",qty:5,src:"s",cats:["Frutal","Bajo"]},
+  {name:"Guayacán real",qty:2,src:"s",cats:["Alto","Ornamental","Resistente al viento"]},
+  {name:"Jícaro o plátano danto",qty:5,src:"s",cats:["Frutal","Bajo","Apto para humedad"]},
+  {name:"Lorito",qty:10,src:"s",cats:["Alto","Protector de nacientes"]},
+  {name:"Malinche",qty:10,src:"s",cats:["Alto","Ornamental","Resistente al viento"]},
+  {name:"Mamón criollo",qty:5,src:"s",cats:["Frutal","Alto"]},
+  {name:"Manzana de agua (Zyzygium)",qty:10,src:"s",cats:["Frutal","Alto","Apto para humedad"]},
+  {name:"Ojoche",qty:6,src:"s",cats:["Alto","Protector de nacientes","Apto para humedad"]},
+  {name:"Orgullo de la india",qty:8,src:"s",cats:["Alto","Ornamental","Resistente al viento"]},
+  {name:"Papaturro",qty:5,src:"s",cats:["Alto","Protector de nacientes","Apto para humedad"]},
+  {name:"Ron ron",qty:5,src:"s",cats:["Alto","Resistente al viento","Protector de nacientes"]},
+  {name:"Rupetria",qty:5,src:"s",cats:["Alto","Resistente al viento"]},
+  {name:"Sainillo-saino",qty:5,src:"s",cats:["Alto","Protector de nacientes"]},
+  {name:"Sotacaballo",qty:5,src:"s",cats:["Alto","Apto para humedad","Protector de nacientes"]},
+  {name:"Vainillo",qty:10,src:"s",cats:["Bajo","Ornamental","Resistente al viento"]},
+];
+
+let sortCol = "name", sortDir = 1, activeFilter = null, activeSource = null, searchVal = "";
+
+const catLabels = {"Frutal":"🍎 Frutal","Alto":"🌳 Alto","Bajo":"🌿 Bajo","Apto para humedad":"💧 Humedad","Resistente al viento":"💨 Viento","Protector de nacientes":"🌊 Nacientes","Ornamental":"🌸 Ornamental","Madera preciosa":"🪵 Madera"};
+const sourceLabels = {f:"📍 Upala", s:"⚡ ICE"};
+
+function updateActiveFilterLabel() {
+  const lbl = document.getElementById("active-filter-label");
+  const fn = document.getElementById("filter-name");
+  const filters = [];
+  if (activeFilter) filters.push(catLabels[activeFilter]);
+  if (activeSource) filters.push(sourceLabels[activeSource]);
+  if (filters.length) {
+    lbl.style.display = "";
+    fn.textContent = filters.join(" + ");
+  } else {
+    lbl.style.display = "none";
+  }
+}
+
+function buildChips() {
+  const wrap = document.getElementById("cat-filters");
+  CATS.forEach(cat => {
+    const btn = document.createElement("button");
+    btn.className = "chip";
+    btn.textContent = catLabels[cat];
+    btn.dataset.cat = cat;
+    btn.onclick = () => {
+      activeFilter = activeFilter === cat ? null : cat;
+      document.querySelectorAll(".chip[data-cat]").forEach(c => c.classList.toggle("active", c.dataset.cat === activeFilter));
+      updateActiveFilterLabel();
+      render();
+    };
+    wrap.appendChild(btn);
+  });
+
+  Object.entries(sourceLabels).forEach(([src, label]) => {
+    const btn = document.createElement("button");
+    btn.className = "chip";
+    btn.textContent = label;
+    btn.dataset.source = src;
+    btn.onclick = () => {
+      activeSource = activeSource === src ? null : src;
+      document.querySelectorAll(".chip[data-source]").forEach(c => c.classList.toggle("active", c.dataset.source === activeSource));
+      updateActiveFilterLabel();
+      render();
+    };
+    wrap.appendChild(btn);
+  });
+}
+
+function getFiltered() {
+  return data.filter(r => {
+    const sourceText = r.src === "f" ? "upala" : "ice";
+    const matchSearch = !searchVal || r.name.toLowerCase().includes(searchVal) || sourceText.includes(searchVal);
+    const matchCat = !activeFilter || r.cats.includes(activeFilter);
+    const matchSource = !activeSource || r.src === activeSource;
+    return matchSearch && matchCat && matchSource;
+  });
+}
+
+function getSorted(rows) {
+  return [...rows].sort((a, b) => {
+    let va, vb;
+    if (sortCol === "name") { va = a.name.toLowerCase(); vb = b.name.toLowerCase(); }
+    else if (sortCol === "qty") { va = a.qty; vb = b.qty; }
+    else { va = a.cats.includes(sortCol) ? 1 : 0; vb = b.cats.includes(sortCol) ? 1 : 0; }
+    if (va < vb) return -1 * sortDir;
+    if (va > vb) return 1 * sortDir;
+    return 0;
+  });
+}
+
+function render() {
+  const rows = getSorted(getFiltered());
+  const tbody = document.getElementById("tbody");
+  const totalQty = rows.reduce((s, r) => s + r.qty, 0);
+  document.getElementById("showing").textContent = rows.length;
+  document.getElementById("total-qty").textContent = totalQty;
+
+  if (rows.length === 0) {
+    tbody.innerHTML = `<tr><td colspan="10" class="empty"><i class="ti ti-mood-empty" aria-hidden="true" style="font-size:24px;display:block;margin:0 auto 8px;opacity:0.4"></i>No se encontraron árboles con ese criterio.</td></tr>`;
+    return;
+  }
+
+  tbody.innerHTML = rows.map(r => {
+    const badge = r.src === "f"
+      ? `<span class="source-badge src-fiorela">Upala</span>`
+      : `<span class="source-badge src-species">ICE</span>`;
+    const cats = CATS.map(c =>
+      `<td style="text-align:center">${r.cats.includes(c) ? '<span class="check"><i class="ti ti-check" aria-hidden="true"></i></span>' : ''}</td>`
+    ).join("");
+    return `<tr>
+      <td class="name-cell">${r.name}${badge}</td>
+      <td class="qty-cell">${r.qty}</td>
+      ${cats}
+    </tr>`;
+  }).join("") + `<tr class="total-row">
+    <td>Total</td><td style="text-align:center;font-weight:500;color:#0F6E56">${totalQty}</td>
+    ${CATS.map(c => `<td style="text-align:center;font-size:11px;color:var(--color-text-secondary)">${rows.filter(r=>r.cats.includes(c)).reduce((s,r)=>s+r.qty,0)}</td>`).join("")}
+  </tr>`;
+
+  document.querySelectorAll("thead th").forEach(th => th.classList.remove("sorted"));
+  const activeId = sortCol === "name" ? "th-name" : sortCol === "qty" ? "th-qty" : COL_IDS[sortCol];
+  if (activeId) {
+    const th = document.getElementById(activeId);
+    if (th) {
+      th.classList.add("sorted");
+      const icon = th.querySelector(".sort-icon");
+      if (icon) { icon.className = `sort-icon ti ${sortDir === 1 ? "ti-sort-ascending" : "ti-sort-descending"}`; }
+    }
+  }
+}
+
+function sortBy(col) {
+  if (sortCol === col) sortDir *= -1;
+  else { sortCol = col; sortDir = 1; }
+  render();
+}
+
+document.getElementById("search").addEventListener("input", e => {
+  searchVal = e.target.value.toLowerCase().trim();
+  render();
+});
+
+buildChips();
+render();
+</script>
