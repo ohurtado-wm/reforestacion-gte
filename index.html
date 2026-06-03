@@ -201,7 +201,7 @@ const data = [
   {name:"Vainillo",qty:10,src:"s",cats:["Bajo","Ornamental","Resistente al viento"]},
 ];
 
-let sortCol = "name", sortDir = 1, activeFilter = null, activeSource = null, searchVal = "";
+let sortCol = "name", sortDir = 1, activeFilters = new Set(), activeSource = null, searchVal = "";
 
 const catLabels = {"Frutal":"🍎 Frutal","Alto":"🌳 Alto","Bajo":"🌿 Bajo","Apto para humedad":"💧 Humedad","Resistente al viento":"💨 Viento","Protector de nacientes":"🌊 Nacientes","Ornamental":"🌸 Ornamental","Madera preciosa":"🪵 Madera"};
 const sourceLabels = {f:"📍 Upala", s:"⚡ ICE"};
@@ -259,7 +259,7 @@ function updateActiveFilterLabel() {
   const lbl = document.getElementById("active-filter-label");
   const fn = document.getElementById("filter-name");
   const filters = [];
-  if (activeFilter) filters.push(catLabels[activeFilter]);
+  activeFilters.forEach(cat => filters.push(catLabels[cat]));
   if (activeSource) filters.push(sourceLabels[activeSource]);
   if (filters.length) {
     lbl.style.display = "";
@@ -277,8 +277,9 @@ function buildChips() {
     btn.textContent = catLabels[cat];
     btn.dataset.cat = cat;
     btn.onclick = () => {
-      activeFilter = activeFilter === cat ? null : cat;
-      document.querySelectorAll(".chip[data-cat]").forEach(c => c.classList.toggle("active", c.dataset.cat === activeFilter));
+      if (activeFilters.has(cat)) activeFilters.delete(cat);
+      else activeFilters.add(cat);
+      btn.classList.toggle("active", activeFilters.has(cat));
       updateActiveFilterLabel();
       render();
     };
@@ -304,7 +305,7 @@ function getFiltered() {
   return data.filter(r => {
     const sourceText = r.src === "f" ? "upala" : "ice";
     const matchSearch = !searchVal || r.name.toLowerCase().includes(searchVal) || sourceText.includes(searchVal);
-    const matchCat = !activeFilter || r.cats.includes(activeFilter);
+    const matchCat = activeFilters.size === 0 || Array.from(activeFilters).every(cat => r.cats.includes(cat));
     const matchSource = !activeSource || r.src === activeSource;
     return matchSearch && matchCat && matchSource;
   });
